@@ -21,48 +21,40 @@ NC='\033[0m' # No Color
 setup_test_environment() {
     echo "Setting up test environment..."
 
-    # Remove old test directory if exists
     rm -rf "$TEST_DIR"
-
-    # Create directory structure
     mkdir -p "$TEST_DIR"/{web,config,scripts,data,uploads}
 
-    # Create web files with permission issues
     touch "$TEST_DIR/web/index.html"
-    chmod 777 "$TEST_DIR/web/index.html"  # INSECURE: world-writable AND executable
+    chmod 777 "$TEST_DIR/web/index.html"
 
     touch "$TEST_DIR/web/style.css"
-    chmod 755 "$TEST_DIR/web/style.css"   # INSECURE: shouldn't be executable
+    chmod 755 "$TEST_DIR/web/style.css"
 
     touch "$TEST_DIR/web/script.js"
-    chmod 644 "$TEST_DIR/web/script.js"   # SECURE
+    chmod 644 "$TEST_DIR/web/script.js"
 
-    # Create config files with permission issues
     touch "$TEST_DIR/config/database.conf"
-    chmod 666 "$TEST_DIR/config/database.conf"  # INSECURE: world-writable
+    chmod 666 "$TEST_DIR/config/database.conf"
 
     touch "$TEST_DIR/config/api_keys.conf"
-    chmod 644 "$TEST_DIR/config/api_keys.conf"  # SECURE
+    chmod 644 "$TEST_DIR/config/api_keys.conf"
 
     touch "$TEST_DIR/config/settings.conf"
-    chmod 755 "$TEST_DIR/config/settings.conf"  # INSECURE: executable config
+    chmod 755 "$TEST_DIR/config/settings.conf"
 
-    # Create scripts (these SHOULD be executable)
     echo "#!/bin/bash" > "$TEST_DIR/scripts/deploy.sh"
-    chmod 755 "$TEST_DIR/scripts/deploy.sh"  # SECURE: scripts should be executable
+    chmod 755 "$TEST_DIR/scripts/deploy.sh"
 
     echo "#!/bin/bash" > "$TEST_DIR/scripts/backup.sh"
-    chmod 777 "$TEST_DIR/scripts/backup.sh"  # INSECURE: world-writable
+    chmod 777 "$TEST_DIR/scripts/backup.sh"
 
-    # Create data files
     touch "$TEST_DIR/data/users.txt"
-    chmod 666 "$TEST_DIR/data/users.txt"  # INSECURE: world-writable
+    chmod 666 "$TEST_DIR/data/users.txt"
 
     touch "$TEST_DIR/data/logs.txt"
-    chmod 640 "$TEST_DIR/data/logs.txt"  # SECURE
+    chmod 640 "$TEST_DIR/data/logs.txt"
 
-    # Create insecure directory
-    chmod 777 "$TEST_DIR/uploads"  # INSECURE: world-writable directory
+    chmod 777 "$TEST_DIR/uploads"
 
     echo "Test files created in: $TEST_DIR"
     echo ""
@@ -77,46 +69,18 @@ find_world_writable() {
 
     local count=0
 
-    # TODO 1: Find all world-writable files and directories
-    #
-    # Instructions:
-    # 1. Use 'find' to search $TEST_DIR for items with world-write permission
-    #    Hint: find "$TEST_DIR" -perm -002
-    #
-    # 2. For each item found, you need to:
-    #    a. Determine if it's a file or directory using: [ -f "$item" ]
-    #    b. Get permissions using: stat -c "%a" "$item"
-    #    c. Print formatted output (see example below)
-    #    d. Increment the count variable
-    #
-    # 3. Use a while loop with process substitution to process results:
-    #    while IFS= read -r item; do
-    #        # your code here
-    #    done < <(find ...)
-    #
-    #    NOTE: Use "< <(find ...)" NOT "find ... |" to avoid subshell issues!
-    #
-    # Output format examples:
-    #   [FILE] /path/to/file.txt (666)
-    #   [DIR]  /path/to/directory (777)
-    #
-    # Example implementation structure:
-    # while IFS= read -r item; do
-    #     perms=$(stat -c "%a" "$item")
-    #
-    #     if [ -f "$item" ]; then
-    #         echo -e "${RED}[FILE]${NC} $item ($perms)"
-    #     elif [ -d "$item" ]; then
-    #         echo -e "${RED}[DIR] ${NC} $item ($perms)"
-    #     fi
-    #
-    #     ((count++))
-    # done < <(find "$TEST_DIR" -perm -002)
+    while IFS= read -r item; do
+        perms=$(stat -c "%a" "$item")
 
-    # YOUR CODE HERE
+        if [ -f "$item" ]; then
+            echo -e "${RED}[FILE]${NC} $item ($perms)"
+        elif [ -d "$item" ]; then
+            echo -e "${RED}[DIR] ${NC} $item ($perms)"
+        fi
 
+        ((count++))
+    done < <(find "$TEST_DIR" -perm /o+w)
 
-    echo ""
     echo "Found $count world-writable items"
     echo ""
     return $count
@@ -127,37 +91,11 @@ find_executable_non_scripts() {
 
     local count=0
 
-    # TODO 2: Find files that shouldn't be executable
-    #
-    # Instructions:
-    # 1. Use 'find' to locate .html, .css, .txt, and .conf files that are executable
-    #    Hint: find "$TEST_DIR" -type f \( -name "*.html" -o -name "*.css" -o -name "*.txt" -o -name "*.conf" \) -perm /111
-    #
-    #    Explanation:
-    #    -type f              = files only
-    #    \( ... \)            = group conditions
-    #    -name "*.html"       = HTML files
-    #    -o                   = OR operator
-    #    -perm /111           = any execute bit set
-    #
-    # 2. For each file found:
-    #    a. Get permissions using: stat -c "%a" "$file"
-    #    b. Print formatted output: [EXEC] /path/to/file (permissions)
-    #    c. Increment count
-    #
-    # 3. Use process substitution (NOT pipe) to preserve count:
-    #    while IFS= read -r file; do
-    #        # your code
-    #    done < <(find ...)
-    #
-    # Example implementation structure:
-    # while IFS= read -r file; do
-    #     perms=$(stat -c "%a" "$file")
-    #     echo -e "${YELLOW}[EXEC]${NC} $file ($perms)"
-    #     ((count++))
-    # done < <(find "$TEST_DIR" -type f \( -name "*.html" -o -name "*.css" -o -name "*.txt" -o -name "*.conf" \) -perm /111)
-
-    # YOUR CODE HERE
+    while IFS= read -r file; do
+        perms=$(stat -c "%a" "$file")
+        echo -e "${YELLOW}[EXEC]${NC} $file ($perms)"
+        ((count++))
+    done < <(find "$TEST_DIR" -type f \( -name "*.html" -o -name "*.css" -o -name "*.txt" -o -name "*.conf" \) -perm /111)
 
 
     echo ""
@@ -175,7 +113,6 @@ main() {
     echo "File Permission Security Scanner"
     echo "========================================"
 
-    # Setup test environment
     setup_test_environment
 
     echo "========================================"
@@ -183,17 +120,14 @@ main() {
     echo "========================================"
     echo ""
 
-    # Run scans
     find_world_writable
     world_writable_count=$?
 
     find_executable_non_scripts
     executable_count=$?
 
-    # Calculate total issues
     total_issues=$((world_writable_count + executable_count))
 
-    # Display summary
     echo "========================================"
     echo "Security Scan Complete"
     echo "========================================"
@@ -213,5 +147,4 @@ main() {
     echo "========================================"
 }
 
-# Run the script
 main
